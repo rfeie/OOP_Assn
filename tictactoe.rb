@@ -1,6 +1,3 @@
-#where to initialize players? Game?
-
-
 
 class Game
 
@@ -8,27 +5,21 @@ class Game
 
 	def initialize
 		num_players = 2
-
+		markers = [:X, :O]
 		@game_data = {}
 		@players = []
-		@board = board
+		@board = Board.new()
 		@marks = {}
 
 		num_players.times do |num|
-			puts "What is Player #{num}'s name?"
+			puts "What is Player #{num + 1}'s name?"
 			name = gets.chomp
-			puts "What is #{name}'s mark?"
-			mark = gets.chomp
-			if @game_data.key(mark) 
-				puts "#{mark} is taken! Choose another!"
-				mark = gets.chomp
-			end
+			mark = markers[num]
+			@marks[mark] = []
 			name = Player.new(name, mark)
 			@players << name
-			@marks[mark] = []
 			@game_data[name] = 0
 		end
-		@score = score_draw(@game_data)
 		@turn = @players[0]
 
 		play
@@ -36,29 +27,41 @@ class Game
 
 	def score_draw(game_data)
 
-		score = ""
+		scores = ""
 		game_data.each do |player, score|
-			score = "#{player.name}: #{score} "
+			temp = "#{player.name}: #{score.to_s} "
+			scores += temp
 		end
-		score
+		scores
 	end
 
-	def board
-		board = Board.new()
-	end
 	def game_over? 
 		positions = []
 		
 		@marks[@turn.mark].each {|num| positions << num.pos}
-		puts positions.to_s
 		positions.sort!
 
 		positions = positions.join
-#		puts positions
-		success = positions.match(/123|456|789|147|258|369|159|357/)
-#		puts success
-		success = success != nil
 
+		success = positions.match(/123|456|789|147|258|369|159|357/)
+		success = success != nil
+		message = {done: false,
+		   		    message: "Not Yet."}
+
+		if success
+			message = {done: :victory,
+			 		   message: "Game Over! \"#{@turn.name}\" wins!"}
+
+		elsif @board.draw_board(@marks.values.flatten).match(/\d/) == nil
+
+			message = {done: :draw,
+			 		   message: "Game Over! Stalemate!"}
+
+		end
+
+			
+		message
+			
 	end
 
 	def get_input
@@ -79,18 +82,36 @@ class Game
 	def play
 		puts @board.draw_board(@marks.values.flatten)
 		@marks[@turn.mark].push(get_input)
-		if game_over?
+		result = game_over?
+		if result[:done] == :victory
 			@game_data[@turn] = @game_data[@turn] + 1
-			puts "Game Over! #{@turn.name} wins!"
+			puts result[:message]
+			puts score_draw(@game_data)
 			puts "Play again? (yes/no)"
 			again = gets.chomp.downcase
 			if again == "yes"
-				@marks.each {|m| @marks[m] = []}
+				newmarks = {}
+				@marks.each {|m, list| newmarks[m] = []}
+				@marks = newmarks
 				@turn = next_item(@turn, @players)
 				play
 			end
 
+		elsif result[:done] == :draw
+			puts result[:message]
+			puts score_draw(@game_data)
+			puts "Play again? (yes/no)"
+			again = gets.chomp.downcase
+			if again == "yes"
+				newmarks = {}
+				@marks.each {|m, list| newmarks[m] = []}
+				@marks = newmarks
+				@turn = next_item(@turn, @players)
+				play
+			end			
+
 		else
+			
 			@turn = next_item(@turn, @players)
 			play
 		end
@@ -116,7 +137,7 @@ end
 
 
 class Board
-	# score?
+
 	def initialize
 		@board ="1|2|3\n4|5|6\n7|8|9"
 
@@ -125,12 +146,9 @@ class Board
 	def draw_board(marks)
 		new_board = @board
 		marks.each do |mark| 
-			#puts new_board
-			#puts mark.pos.to_s
-			#puts mark.text
-			new_board = new_board.gsub(mark.pos.to_s, mark.text)
+
+			new_board = new_board.gsub(mark.pos.to_s, mark.text.to_s)
 		end
-		new_board = new_board.gsub(/[1-6]/, "_").gsub(/[7-9]/, " ")
 		new_board
 
 	end
@@ -159,7 +177,5 @@ class Marker
 
 end
 
-#board = Board.new
-#puts board.draw_board([])
 
 game = Game.new
